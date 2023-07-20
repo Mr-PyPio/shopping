@@ -113,6 +113,86 @@ exports.productDetail = (req, res) => {
   })
 }
 
+// 获取广告位列表数据
+exports.bannerList = (req, res) => {
+  let sql = `select id,code,name,num from banner_list`
+  db.base(sql, null, (result) => {
+    if (result) {
+      return res.json({
+        status: 200, data: result
+      })
+    } else {
+      return res.json({
+        status: 400, data: result
+      })
+    }
+  })
+}
+
+// 根据id获取对应广告位数据
+exports.bannerDetail = (req, res) => {
+  let id = req.body.id
+  let sql = `select * from banner_list where id = ${id}`
+  db.base(sql, id, (result) => {
+    if (result) {
+      return res.json({
+        status: 200, data: result
+      })
+    } else {
+      return res.json({
+        status: 400, data: result
+      })
+    }
+  })
+}
+
+//修改广告位
+exports.changeBanner = (req, res) => {
+  let detail = req.body.data
+  let id = req.body.id
+  let num = req.body.num
+  let name = req.body.name
+  let code = req.body.code
+  let sql = ''
+  let arr = []
+  if (detail) {
+    sql = 'update banner_list set detail=?,num=?  where id=?'
+    arr = [detail, num, id]
+  } else {
+    sql = 'update banner_list set name=?,code=?  where id=?'
+    arr = [name, code, id]
+  }
+  db.base(sql, arr, (result) => {
+    if (result) {
+      return res.json({
+        status: 200, data: result
+      })
+    } else {
+      return res.json({
+        status: 400, data: result
+      })
+    }
+  })
+}
+
+//创建banner
+exports.bannerCreate = (req, res) => {
+  let id = req.body.id
+  let name = req.body.name
+  let code = req.body.code
+  let sql = 'insert into banner_list(id,code,name) values(?,?,?)';
+  db.base(sql, [id, code, name], (result) => {
+    if (result) {
+      return res.json({
+        status: 200, data: result
+      })
+    } else {
+      return res.json({
+        status: 400, data: result
+      })
+    }
+  })
+}
 // 测试获取表中全部数据
 exports.productList = (req, res) => {
   let page = parseInt(req.body.page)

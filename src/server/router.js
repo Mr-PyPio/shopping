@@ -24,5 +24,14 @@ router.post('/api/productAddImg', services.productAddImg)
 router.post('/api/productSizes', services.productSizes)
 //保存
 router.post('/api/saleProductSizes', services.saleProductSizes)
+//获取banner列表
+router.post('/api/bannerList', services.bannerList)
+//获取banner详细
+router.post('/api/bannerDetail', services.bannerDetail)
+//创建banner
+router.post('/api/bannerCreate', services.bannerCreate)
+//修改banner
+router.post('/api/changeBanner', services.changeBanner)
+
 
 module.exports = router

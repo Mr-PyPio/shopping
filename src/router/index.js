@@ -38,7 +38,7 @@ const routes = [
         component: Banner
       },
       {
-        path: '/banner/:ids.html',
+        path: '/banner/banner-:ids.html',
         component: BannerDetail,
       },
       {
@@ -46,7 +46,7 @@ const routes = [
         component: Catalog,
       },
       {
-        path: '/catalog/:ids.html',
+        path: '/catalog/catalog-:ids.html',
         component: CatalogDetail,
       },
     ]
@@ -64,23 +64,23 @@ const router = createRouter({
 })
 
 // to 将要访问的路径  form 代表从哪个路径跳转而来  next 是一个函数，表示放行（next() 放行  或 next('/login') 强制跳转
-router.beforeEach((to) => {
+
+/* eslint-disable */
+router.beforeEach(async (to) => {
+  const userName = window.localStorage.getItem('userName') ?? ''
+  const token = window.localStorage.getItem('userLoginToken') ?? ''
   if (to.name != 'Login') {
+    // 没有token，强制跳转到登录页=
     const tokenStr = window.localStorage.getItem('userLoginToken')
-    // 没有token，强制跳转到登录页
     if (tokenStr) {
-      const userName = window.localStorage.getItem('userName') ?? ''
-      const token = window.localStorage.getItem('userLoginToken') ?? ''
-      axios.post('loginStatus', { token: token, username: userName })
-        .then((res) => {
-          if (res.data.status == 400 || res.data.msg == '已过期') {
-            return { name: 'Login' }
-          }
-        })
-    } else if (!tokenStr) {
-      return { name: 'Login' }
+      const { data: res } = await axios.post('loginStatus', { token: token, username: userName })
+      if (res.status == '400' || res.msg == '已过期') {
+        return '/login.html'
+      }
+    } else {
+      return '/login.html'
     }
   }
 })
-
+/* eslint-disable */
 export default router
