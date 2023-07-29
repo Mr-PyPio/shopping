@@ -113,11 +113,242 @@ exports.productDetail = (req, res) => {
   })
 }
 
+// 获取勾选位列表数据
+exports.catalogList = (req, res) => {
+  let sql = `select id,code,name,productsList from catalog_list`
+  db.base(sql, null, (result) => {
+    if (result) {
+      return res.json({
+        status: 200, data: result
+      })
+    } else {
+      return res.json({
+        status: 400, data: result
+      })
+    }
+  })
+}
+
+//获取id数组对于的产品数据
+const getArrProducts = arr => {
+  let arr2 = JSON.parse(arr)
+  let sql = ''
+  for (let i = 0; i < arr2.length; i++) {
+    sql += `select id, name, status from cc_products where id=${arr2[i]};`
+  }
+  return new Promise((resolve, reject) => {
+    db.base(sql, null, async res => {
+      if (res) {
+        let imageArr = await getProductImg()
+        for (let i = 0; i < res.length; i++) {
+          res[i] = res[i][0]
+          for (let f = 0; f < imageArr.length; f++) {
+            if (res[i].id == imageArr[f].product_id) {
+              res[i].product_img = JSON.parse(imageArr[f].product_img)[0]
+            } else {
+              res[i].product_img = ''
+            }
+            res[i].key = res[i].id
+          }
+        }
+
+        resolve(res)
+      } else {
+        resolve([])
+      }
+    })
+  })
+}
+
+const getProductImg = () => {
+  return new Promise((resolve, reject) => {
+    db.base('select * from cc_products_images', null, res => {
+      if (res) {
+        resolve(res)
+      } else {
+        resolve([])
+      }
+    })
+  })
+}
+
+// 根据id获取对应勾选位数据
+exports.catalogDetail = (req, res) => {
+  let id = req.body.id
+  let sql = `select * from catalog_list where id = ${id}`
+  db.base(sql, id, async result => {
+    if (!result.length) {
+      return res.json({
+        status: 400, data: result, productList: []
+      })
+    } else {
+      let productList
+      if (Boolean(result[0].productsList)) {
+        productList = await getArrProducts(result[0].productsList)
+      } else {
+        productList = []
+      }
+      return res.json({
+        status: 200, data: result, productList: productList
+      })
+    }
+  })
+}
+
+//修改勾选位
+exports.changeCatalog = (req, res) => {
+  let detail = req.body.data
+  let id = req.body.id
+  let num = req.body.num
+  let name = req.body.name
+  let code = req.body.code
+  let sql = ''
+  let arr = []
+  if (detail) {
+    sql = 'update catalog_list set productsList=?,name=?,code=?  where id=?'
+    arr = [detail, name, code, id]
+  } else {
+    sql = 'update catalog_list set name=?,code=?  where id=?'
+    arr = [name, code, id]
+  }
+  db.base(sql, arr, (result) => {
+    if (result) {
+      return res.json({
+        status: 200, data: result
+      })
+    } else {
+      return res.json({
+        status: 400, data: result
+      })
+    }
+  })
+}
+
+//创建勾选位
+exports.catalogCreate = (req, res) => {
+  let id = req.body.id
+  let name = req.body.name
+  let code = req.body.code
+  let sql = 'insert into catalog_list(id,code,name) values(?,?,?)';
+  db.base(sql, [id, code, name], (result) => {
+    if (result) {
+      return res.json({
+        status: 200, data: result
+      })
+    } else {
+      return res.json({
+        status: 400, data: result
+      })
+    }
+  })
+}
+
+//勾选位获取产品部分信息
+exports.getProductsList = async (req, res) => {
+  let page = parseInt(req.body.page)
+  let pageSize = parseInt(req.body.pageSize)
+  let id = req.body.id
+  let imgArr = await getProductImg()
+  let arrlayProduct = []
+
+  db.base('select productsList from catalog_list where id=?', id, res => {
+    if (res) {
+      arrlayProduct = Boolean(res[0].productsList) ? JSON.parse(res[0].productsList) : []
+    }
+  })
+
+  db.base('select id, name, status from cc_products', null, (result) => {
+    if (result) {
+      for (let i = 0; i < result.length; i++) {
+        for (let f = 0; f < imgArr.length; f++) {
+          if (result[i].id == imgArr[f].product_id) {
+            result[i].product_img = imgArr[f].product_img
+          } else {
+            result[i].product_img = ''
+          }
+          result[i].key = result[i].id
+        }
+        if (arrlayProduct.indexOf(`${result[i].id}`) >= 0) {
+          result.splice(i, 1)
+          i--
+        }
+      }
+      let size = Math.round(result.length / pageSize)
+      if (page >= size) {
+        page = size
+      } else if (page <= 1) {
+        page = 1
+      }
+      let endIndex = page * pageSize
+      if (endIndex > result.length - 1) {
+        endIndex = result.length - 1
+      }
+      result = result.reverse()
+      let end = result.slice((page - 1) * pageSize, endIndex)
+      return res.json({
+        status: 200,
+        data: end,
+        total: result.length,
+        pageData: {
+          page: page,
+          lastPage: size,
+          pageSize: pageSize,
+        },
+        arrlayProduct: arrlayProduct,
+      })
+    } else {
+      return res.json({
+        status: 400, data: result
+      })
+    }
+  })
+}
+
+//勾选位添加产品
+exports.addProductOfCatalog = (req, res) => {
+  let arr = JSON.stringify(req.body.arr)
+  let id = req.body.id
+  let sql = 'update catalog_list set productsList=?  where id=?'
+  db.base(sql, [arr, id], (result) => {
+    if (result) {
+      return res.json({
+        status: 200, data: result
+      })
+    } else {
+      return res.json({
+        status: 400, data: result
+      })
+    }
+  })
+}
+
+//勾选位删除产品
+exports.delateCatalogList = (req, res) => {
+  let id = req.body.id
+  let sql = ''
+  for (let i = 0; i < id.length; i++) {
+    sql += `delete from catalog_list where id=${id[i]};`
+  }
+  console.log(sql)
+  db.base(sql, null, (result) => {
+    if (result) {
+      return res.json({
+        status: 200, data: result
+      })
+    } else {
+      return res.json({
+        status: 400, data: result
+      })
+    }
+  })
+}
+
 // 获取广告位列表数据
 exports.bannerList = (req, res) => {
   let sql = `select id,code,name,num from banner_list`
   db.base(sql, null, (result) => {
     if (result) {
+
       return res.json({
         status: 200, data: result
       })
@@ -144,6 +375,41 @@ exports.bannerDetail = (req, res) => {
       })
     }
   })
+}
+
+//删除广告位
+exports.delateBanner = (req, res) => {
+  let id = req.body.id
+  let sql = 'delete from banner_list where id=?'
+  let i = 0
+  delate(i)
+  function delate(i) {
+    if (i < id.length) {
+      db.base(sql, id[i], (result) => {
+        if (result) {
+          i++
+          delate(i)
+        } else {
+          return res.json({
+            status: 400, data: result
+          })
+        }
+      })
+    } else {
+      let sql2 = `select id,code,name,num from banner_list`
+      db.base(sql2, null, (result) => {
+        if (result) {
+          return res.json({
+            status: 200, data: result
+          })
+        } else {
+          return res.json({
+            status: 400, data: result
+          })
+        }
+      })
+    }
+  }
 }
 
 //修改广告位

@@ -32,6 +32,21 @@ router.post('/api/bannerDetail', services.bannerDetail)
 router.post('/api/bannerCreate', services.bannerCreate)
 //修改banner
 router.post('/api/changeBanner', services.changeBanner)
-
+//删除广告位
+router.post('/api/delateBanner', services.delateBanner)
+//获取勾选位列表
+router.post('/api/catalogList', services.catalogList)
+//获取勾选位详细
+router.post('/api/catalogDetail', services.catalogDetail)
+//创建勾选位
+router.post('/api/catalogCreate', services.catalogCreate)
+//修改勾选位
+router.post('/api/changeCatalog', services.changeCatalog)
+//勾选位获取产品数据
+router.post('/api/getProductsList', services.getProductsList)
+//勾选位添加产品
+router.post('/api/addProductOfCatalog', services.addProductOfCatalog)
+//删除勾选位
+router.post('/api/delateCatalogList', services.delateCatalogList)
 
 module.exports = router

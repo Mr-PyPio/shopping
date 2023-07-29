@@ -7,7 +7,8 @@ exports.base = (sql, data, callback) => {
     user: 'root',
     password: '',
     database: 'my_object',
-    port: '3306'
+    port: '3306',
+    multipleStatements: true
   })
   // 连接数据库
   connection.connect();

@@ -4,7 +4,7 @@ import router from './router'
 import store from './store'
 import axios from 'axios'
 import Antd from "ant-design-vue/es";
-import 'ant-design-vue/dist/antd.css';
+import 'ant-design-vue/dist/reset.css';
 import 'assets/css/reset.css'
 
 axios.defaults.baseURL = 'http://192.168.0.102:8081/api/'

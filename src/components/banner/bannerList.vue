@@ -59,9 +59,9 @@ export default defineComponent({
           console.log(result)
           data.value = result.data
           for (let i = 0; i < result.data.length; i++) {
-            data.value[i].key = (i + 1)
+            data.value[i].key = result.data[i].id
           }
-          lastId.value = result.data.length + 1
+          lastId.value = result.data[result.data.length - 1].id + 1
         }
       }
     })
@@ -82,10 +82,22 @@ export default defineComponent({
     });
     const hasSelected = computed(() => state.selectedRowKeys.length > 0);
     const clear = () => {
-
+      axios.post('delateBanner',{id: state.selectedRowKeys }).then(res => {
+        if (res.status == 200) {
+          const result = res.data
+           if (result.data.length > 0) {
+            console.log(result)
+            data.value = result.data
+            for (let i = 0; i < result.data.length; i++) {
+              data.value[i].key = result.data[i].id
+            }
+            lastId.value = result.data[result.data.length - 1].id + 1
+          }
+        }
+      })
     };
-    const onSelectChange = selectedRowKeys => {
-      console.log('selectedRowKeys changed: ', selectedRowKeys);
+    const onSelectChange = (selectedRowKeys,selectedRows) => {
+      console.log('selectedRowKeys changed: ', selectedRowKeys,selectedRows);
       state.selectedRowKeys = selectedRowKeys;
     };
     const addBanner = () => {
