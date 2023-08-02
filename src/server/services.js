@@ -422,8 +422,8 @@ exports.changeBanner = (req, res) => {
   let sql = ''
   let arr = []
   if (detail) {
-    sql = 'update banner_list set detail=?,num=?  where id=?'
-    arr = [detail, num, id]
+    sql = 'update banner_list set detail=?,num=?,name=?,code=? where id=?'
+    arr = [detail, num, name, code, id]
   } else {
     sql = 'update banner_list set name=?,code=?  where id=?'
     arr = [name, code, id]

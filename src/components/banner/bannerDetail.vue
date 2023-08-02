@@ -16,7 +16,7 @@
     <div class="bannerItems" ref="bannerItems" style="display:none">
       <h3>成员</h3>
       <div style="margin-bottom: 16px">
-        <a-button type="primary" :disabled="!hasSelected" :loading="state.loading" @click="start">
+        <a-button type="primary" :disabled="!hasSelected" :loading="state.loading" @click="deleteBanner">
           删除
         </a-button>
         <a-button type="primary" style="margin-left: 16px" @click="createItems">
@@ -32,17 +32,18 @@
         :row-selection="{ selectedRowKeys: state.selectedRowKeys, onChange: onSelectChange }"
         :columns="columns"
         :data-source="banner_data"
+        :customRow="rowClick"
       />
     </div>
 
     <div class="createBannerWrap" ref="createBannerWrap">
-      <div class="createcontent" style="display: flex;">
+      <div class="createcontent" style="display: flex;justify-content: space-between;">
           <div style="margin-right: 20px">
             <p>成员名称:</p>
             <input type="text" v-model="itemsName">
             <p>排序:</p>
             <input type="text" v-model="itemsSort">
-            <p>连接: </p>
+            <p>链接: </p>
             <input type="text" v-model="itemsLink">
           </div>
           <div class="clearfix">
@@ -59,14 +60,21 @@
             </a-modal>
           </div>
       </div>
+      <editor-element ref="editorRefs"></editor-element>
       <div style="display:flex;justify-content: flex-end;margin-top: 20px;">
           <a-button type="primary" style="margin-left: 16px" @click="saveBannerItems">
-            Create
+            创建
           </a-button>
           <a-button type="primary" style="margin-left: 16px" @click="closeWrap">
-            Close
+            关闭
           </a-button>
       </div>
+    </div>
+
+    <div>
+      <a-modal v-model:open="open" title="提示" @ok="handleOk" @cancel="cancel" :confirm-loading="confirmLoading" okText="保存" cancelText="取消">
+        <p>是否保存已修改的内容？</p>
+      </a-modal>
     </div>
   </div>
 </template>
@@ -76,16 +84,23 @@ import { defineComponent, ref ,computed } from 'vue'
 import { PlusOutlined } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
 import { useRouter } from 'vue-router'
+import editorElement from 'components/tools/editor.vue'
 import axios from 'axios';
 export default defineComponent({
   components: {
     PlusOutlined,
+    editorElement
   },
   setup() {
+    const open = ref(false)
+    const confirmLoading = ref(false)
+    const isChangecontent = ref(false) 
+    const editorRefs = ref()
     const router = useRouter()
     const banner_id = router.currentRoute.value.params.ids
     const previewVisible = ref(false);
     const previewImage = ref('');
+    const previewImageData = ref({});
     const previewTitle = ref('');
     const fileList = ref([])
     const submitBtn = ref(null)
@@ -116,12 +131,13 @@ export default defineComponent({
       if (res.data.status == '200' && result.length > 0) {
         banner_name.value = result[0].name
         banner_code.value = result[0].code
-        submitBtn.value.createorsave = 'save'
         bannerItems.value.style.display = 'block'
         if(result[0].detail) {
-          // banner_data.value = result[0].detail
           console.log(JSON.parse(result[0].detail))
           banner_data.value = JSON.parse(result[0].detail)
+          for (let i = 0; i < banner_data.value.length; i++) {
+            banner_data.value[i].key = i
+          }
           defaultKey = banner_data.value.length + 1
           banner_num.value = banner_data.value.length
         }
@@ -130,23 +146,61 @@ export default defineComponent({
       }
     })
 
+    const handleOk = () => {
+        confirmLoading.value = true;
+        const upData = {
+          data: JSON.stringify(banner_data.value),
+          num: banner_num.value,
+          id: banner_id,
+          code: banner_code.value,
+          name: banner_name.value
+        }
+        axios.post('changeBanner', upData).then(res => {
+          if (res.status == 200) {
+            open.value = false;
+            confirmLoading.value = false;
+            router.push(`/banner.html`)
+          }
+        })
+    }
+
+    const cancel = () => {
+      open.value = false;
+      confirmLoading.value = false;
+      router.push(`/banner.html`)
+    }
+
     const submitSaveBanner = () => {
-      const disabled = submitBtn.value.createorsave
-      if(disabled != 'save') {
-        axios.post('bannerCreate',{id: banner_id,name: banner_name.value,code: banner_code.value}).then( res => {
-          if (res.status == '200') {
-            submitBtn.value.createorsave = 'save'
-            bannerItems.value.style.display = 'block'
-          }
-        })
+      if (isChangecontent.value) {
+        open.value = true;
+        return
       } else {
-        axios.post('changeBanner',{id: banner_id,name: banner_name.value,code: banner_code.value}).then(res => {
-          if(res.status == 200) {
-            console.log(1)
-          }
-        })
+        if (!banner_data.value.length) {
+            axios.post('bannerCreate',{id: banner_id,name: banner_name.value,code: banner_code.value}).then( res => {
+                if (res.status == '200') {
+                  bannerItems.value.style.display = 'block'
+                }
+            })
+        } else {
+          router.push(`/banner.html`)
+        }
       }
     }
+
+    const rowClick = ref((record,index) => {
+      return {
+        onclick: () => {
+          const itemData = banner_data.value[index]
+          console.log(itemData, record)
+          fileList.value = [itemData.img]
+          itemsName.value = itemData.name
+          itemsSort.value = itemData.sort
+          itemsLink.value = itemData.link
+          editorRefs.value.changeValueHtml(itemData.desc)
+          createBannerWrap.value.style.display = 'block'
+        }
+      }
+    })
 
     let state = ref({
       selectedRowKeys: [],
@@ -154,49 +208,52 @@ export default defineComponent({
       loading: false,
     });
     const hasSelected = computed(() => state.value.selectedRowKeys.length > 0);
-    const start = () => {
+    const deleteBanner = () => {
       state.value.loading = true;
       for (let i = 0; i < state.value.selectedRowKeys.length; i++) {
-        banner_num.value --
-        banner_data.value.splice(i-1,1)
+        console.log(banner_data.value)
+        banner_data.value.splice(state.value.selectedRowKeys[i], 1)
       }
-      changeBannerAjax(function () {
+      banner_num.value = banner_data.value.length
+      isChangecontent.value = true
+      setTimeout(() => {
         state.value.loading = false;
-        state.value.selectedRowKeys = [];
-      })
+        state.value.selectedRowKeys = []
+      },1000)
     };
     const createItems = () => {
       createBannerWrap.value.style.display = 'block'
     }
     const saveBannerItems = () => {
+      const desc = editorRefs.value.valueHtml ?? ''
       const detail = 
         {
           key:defaultKey,
           name: itemsName.value,
           sort: itemsSort.value,
           link: itemsLink.value,
-          img: previewImage.value
-        }
+          img: previewImageData.value,
+          desc: desc
+      }
       banner_data.value.push(detail)
-      changeBannerAjax()
-    }
-    const changeBannerAjax = callBack => {
-      axios.post('changeBanner', { data: JSON.stringify(banner_data.value), num: banner_num.value, id: banner_id}).then(res => {
-        console.log(res)
-        if(res.data.status == '200') {
-          defaultKey++
-          itemsName.value = ''
-          itemsSort.value = ''
-          itemsLink.value = ''
-          previewImage.value = ''
-          createBannerWrap.value.style.display = 'none'
-          if(callBack) {
-            callBack()
-          }
-        }
-      })
+      isChangecontent.value = true
+      banner_num.value = banner_data.value.length
+      defaultKey++
+      itemsName.value = ''
+      itemsSort.value = ''
+      itemsLink.value = ''
+      previewImage.value = ''
+      previewImageData.value = ''
+      createBannerWrap.value.style.display = 'none'
     }
     const closeWrap = () => {
+      itemsName.value = ''
+      itemsSort.value = ''
+      itemsLink.value = ''
+      previewImage.value = ''
+      previewImageData.value = ''
+      editorRefs.value.changeValueHtml('')
+      fileList.value = []
       createBannerWrap.value.style.display = 'none'
     }
 
@@ -213,6 +270,12 @@ export default defineComponent({
         file.preview = file.response;
       }
       previewImage.value = file.url || file.preview;
+      previewImageData.value = {
+        uid: file.uid,
+        status: file.status,
+        name: file.name,
+        url: file.url || file.preview
+      }
       previewVisible.value = true;
       previewTitle.value = file.name || file.url.substring(file.url.lastIndexOf('/') + 1);
     };
@@ -220,7 +283,12 @@ export default defineComponent({
       console.log(info)
       if (info.file.status === 'done') {
         previewImage.value = info.file.response
-        console.log(previewImage.value)
+        previewImageData.value = {
+          uid: info.file.uid,
+          status: info.file.status,
+          name: info.file.name,
+          url: info.file.response
+        }
         message.success(`${info.file.name} file uploaded successfully`);
       } else if (info.file.status === 'error') {
         message.error(`${info.file.name} file upload failed.`);
@@ -230,7 +298,7 @@ export default defineComponent({
       banner_name,
       banner_code,
       hasSelected,
-      start,
+      deleteBanner,
       onSelectChange,
       columns,
       state,
@@ -253,7 +321,13 @@ export default defineComponent({
       submitSaveBanner,
       submitBtn,
       bannerItems,
-      banner_num
+      banner_num,
+      rowClick,
+      editorRefs,
+      handleOk,
+      open,
+      confirmLoading,
+      cancel
     }
   },
 })
@@ -341,6 +415,7 @@ export default defineComponent({
     top: 50%;
     left: 50%;
     transform: translate(-50%,-50%);
+    min-width: 500px;
 
     p{
       font-weight: 600;
@@ -366,5 +441,13 @@ export default defineComponent({
   }
   .ant-upload-list{
     height: 250px;
+  }
+  :where(.css-dev-only-do-not-override-eq3tly).ant-upload-wrapper.ant-upload-picture-card-wrapper .ant-upload.ant-upload-select{
+    width: 200px;
+    height: 200px;
+  }
+  :where(.css-dev-only-do-not-override-eq3tly).ant-upload-wrapper.ant-upload-picture-card-wrapper .ant-upload-list.ant-upload-list-picture-card .ant-upload-list-item-container{
+     width: 200px;
+    height: auto
   }
 </style>

@@ -98,5 +98,5 @@ const server = http.createServer(function (req, res) {
 var port = 8082;
 server.listen(port, function () {
   console.log(`图片服务器正在运行在端口：${port}`);
-  console.log(`访问地址：http://192.168.0.102:8082:${port}`);
+  console.log(`访问地址：http://192.168.0.102:${port}`);
 });
