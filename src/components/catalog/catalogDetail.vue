@@ -39,7 +39,7 @@
               </router-link>
             </template>
             <template v-if="column.dataIndex === 'image'">
-                <img :src="record.product_img" />
+                <img :src="record.product_img? record.product_img.url :''"  style="width: 100px"/>
             </template>
         </template>
       </a-table>
@@ -146,8 +146,17 @@ export default defineComponent({
     const start = () => {
       state.value.loading = true;
       for (let i = 0; i < state.value.selectedRowKeys.length; i++) {
-        catalog_num.value --
-        catalog_data.value.splice(i-1,1)
+        catalog_num.value--
+        catalog_data.value.forEach((items,key) => {
+          if (items.id == state.value.selectedRowKeys[i]) {
+            catalog_data.value.splice(key,1)
+          }
+        })
+        oldProductIds.value.forEach((items, key) => {
+          if (items == state.value.selectedRowKeys[i]) {
+             oldProductIds.value.splice(key, 1)
+          }
+        })
       }
       changeCatalogAjax(function () {
         state.value.loading = false;
@@ -162,7 +171,8 @@ export default defineComponent({
       createCatalogWrap.value.style.display = 'none'
     }
     const changeCatalogAjax = callBack => {
-      axios.post('changeCatalog', { data: JSON.stringify(catalog_data.value), num: catalog_num.value, id: catalog_id,name:catalog_name.value,code:catalog_code.value }).then(res => {
+      let data = oldProductIds.value ? JSON.stringify(oldProductIds.value) : ''
+      axios.post('changeCatalog', { data: data, num: catalog_num.value, id: catalog_id,name:catalog_name.value,code:catalog_code.value }).then(res => {
         console.log(res)
         if(res.data.status == '200') {
           defaultKey++

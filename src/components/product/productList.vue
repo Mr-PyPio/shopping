@@ -19,6 +19,9 @@
               {{ record.name }}
             </router-link>
         </template>
+        <template v-if="column.dataIndex === 'img'">
+            <img v-if="record.product_img" :src="record.product_img.url"  style="width: 60px"/>
+        </template>
       </template>
       <template #summary>
         <a-table-summary :fixed="top">
@@ -98,3 +101,9 @@ export default defineComponent({
   }
 });
 </script>
+
+<style>
+  .ant-table-container  td{
+    vertical-align: middle;
+  }
+</style>

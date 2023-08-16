@@ -10,6 +10,7 @@ const Banner = () => import('components/banner/bannerList.vue')
 const Catalog = () => import('components/catalog/catalogList.vue')
 const BannerDetail = () => import('components/banner/bannerDetail.vue')
 const CatalogDetail = () => import('components/catalog/catalogDetail.vue')
+const Category = () => import('components/category/categoryList.vue')
 
 const routes = [
   {
@@ -48,6 +49,10 @@ const routes = [
       {
         path: '/catalog/catalog-:ids.html',
         component: CatalogDetail,
+      },
+      {
+        path: '/category.html',
+        component: Category,
       },
     ]
   },

@@ -48,5 +48,7 @@ router.post('/api/getProductsList', services.getProductsList)
 router.post('/api/addProductOfCatalog', services.addProductOfCatalog)
 //删除勾选位
 router.post('/api/delateCatalogList', services.delateCatalogList)
+//获取分类列表
+router.post('/api/getCategoryList', services.getCategoryList)
 
 module.exports = router

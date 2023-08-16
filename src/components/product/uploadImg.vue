@@ -7,44 +7,46 @@
         <div style="margin-top: 8px">Upload</div>
       </div>
     </a-upload>
-    <a-modal :visible="previewVisible" :title="previewTitle" :footer="null" @cancel="handleCancel">
+    <a-modal :open="previewVisible" :title="previewTitle" :footer="null" @cancel="handleCancel">
       <img alt="example" style="width: 100%" :src="previewImage" />
     </a-modal>
+
+     <button class="saveButton" ref="SaveButton" disabled="disabled" type="button" @click="saveMessage">保存</button>
   </div>
 </template>
 <script>
-import { message } from 'ant-design-vue';
-import { PlusOutlined } from '@ant-design/icons-vue';
-import { defineComponent, ref } from 'vue';
-let product_img = new Array();
-const product_icon = ref('');
-let fileList = new Array();
+import { message , Modal } from 'ant-design-vue';
+import { PlusOutlined,ExclamationCircleOutlined } from '@ant-design/icons-vue';
+import { defineComponent, ref, createVNode  } from 'vue';
+import { getImgSize } from 'assets/js/common.js'
+import axios from 'axios';
+import { useRouter, onBeforeRouteLeave } from 'vue-router'
+
 export default defineComponent({
   components: {
     PlusOutlined,
   },
   props: {
-     productImgList: Array
+    productImgList: {
+      type: Array,
+      default: (() => [])
+    },
+    id: {
+      type: String,
+      default: ''
+     }
   },
   setup(props) {
+    const router = useRouter()
+    const SaveButton = ref(null)
+    const product_id = ref(props.id)
+    const product_img = ref(props.productImgList);
+    const product_icon = ref('');
+    const fileList = ref(props.productImgList);
     const previewVisible = ref(false);
     const previewImage = ref('');
     const previewTitle = ref('');
-    const getFileList = () => {
-      let arr = []
-      const data = JSON.parse(JSON.stringify(props.productImgList))
-      data.forEach((item, key) => {
-        arr.push({
-          uid: key,
-          status: 'done',
-          url: item,
-          name: 'image',
-        })
-        product_img.push(item)
-      })
-      return arr
-    }
-    fileList = ref(getFileList());
+    const isChangecontent = ref(false)
     const handleCancel = () => {
       previewVisible.value = false;
       previewTitle.value = '';
@@ -60,12 +62,71 @@ export default defineComponent({
     const handleChange = async info => {
       console.log(info)
       if (info.file.status === 'done') {
-        product_img.push(info.file.response)
+        const imgMessage = await getImgSize(info.file.response)
+        const previewImageData = {
+          uid: info.file.uid,
+          status: info.file.status,
+          name: info.file.name,
+          url: info.file.response,
+          imgMessage: imgMessage
+        }
+        product_img.value.push(previewImageData)
+        SaveButton.value.disabled = false
+        isChangecontent.value = true
         message.success(`${info.file.name} file uploaded successfully`);
       } else if (info.file.status === 'error') {
         message.error(`${info.file.name} file upload failed.`);
+      } else if (info.file.status == "removed") {
+        const uid = info.file.uid
+        product_img.value.forEach((items,key) => {
+          if (items.uid == uid) {
+            product_img.value.splice(key, 1)
+          }
+        })
+        SaveButton.value.disabled = false
+        isChangecontent.value = true
       }
     };
+    const saveMessage = () => {
+      axios.post('productAddImg', {
+        product_id: product_id.value,
+        product_img: JSON.stringify(product_img.value),
+        product_icon: JSON.stringify(product_img.value[0])
+      }).then(() => {
+        router.go(0)
+      })
+    }
+    onBeforeRouteLeave((to, from, next) => {
+      console.log(to,from,next)
+      if (isChangecontent.value) {
+         Modal.confirm({
+          title: '提示',
+          icon: createVNode(ExclamationCircleOutlined),
+          content: createVNode('div', {
+            style: 'color:red;',
+          }, '内容已修改，是否保存？'),
+           onOk() {
+            axios.post('productAddImg', {
+              product_id: product_id.value,
+              product_img: JSON.stringify(product_img.value),
+              product_icon: JSON.stringify(product_img.value[0])
+            }).then((res) => {
+              if (res.status == 200) {
+                next(true)
+              } else {
+                next(false)
+              }
+            })
+          },
+          onCancel() {
+            next(true)
+          },
+          class: 'test',
+        });
+      } else {
+        next(true)
+      }
+    })
     return {
       previewVisible,
       previewImage,
@@ -75,7 +136,8 @@ export default defineComponent({
       previewTitle,
       handleChange,
       product_icon,
-      product_img
+      saveMessage,
+      SaveButton
     };
   },
 });
@@ -90,5 +152,23 @@ export default defineComponent({
 .ant-upload-select-picture-card .ant-upload-text {
   margin-top: 8px;
   color: #666;
+}
+
+
+.saveButton {
+  width: 100px;
+  font-size: 14px;
+  line-height: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 0;
+  background: #222;
+  color: #fff;
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+}
+.saveButton:disabled {
+    background: #ccc;
 }
 </style>

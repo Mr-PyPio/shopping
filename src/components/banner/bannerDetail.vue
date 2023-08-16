@@ -55,7 +55,7 @@
                 <div style="margin-top: 8px">Upload</div>
               </div>
             </a-upload>
-            <a-modal :visible="previewVisible" :title="previewTitle" :footer="null" @cancel="handleCancel">
+            <a-modal :open="previewVisible" :title="previewTitle" :footer="null" @cancel="handleCancel">
               <img alt="example" style="width: 100%" :src="previewImage" />
             </a-modal>
           </div>
@@ -63,27 +63,22 @@
       <editor-element ref="editorRefs"></editor-element>
       <div style="display:flex;justify-content: flex-end;margin-top: 20px;">
           <a-button type="primary" style="margin-left: 16px" @click="saveBannerItems">
-            创建
+            保存
           </a-button>
           <a-button type="primary" style="margin-left: 16px" @click="closeWrap">
             关闭
           </a-button>
       </div>
     </div>
-
-    <div>
-      <a-modal v-model:open="open" title="提示" @ok="handleOk" @cancel="cancel" :confirm-loading="confirmLoading" okText="保存" cancelText="取消">
-        <p>是否保存已修改的内容？</p>
-      </a-modal>
-    </div>
   </div>
 </template>
 
 <script>
-import { defineComponent, ref ,computed } from 'vue'
-import { PlusOutlined } from '@ant-design/icons-vue';
-import { message } from 'ant-design-vue';
-import { useRouter } from 'vue-router'
+import { defineComponent, ref ,computed, createVNode } from 'vue'
+import { PlusOutlined, ExclamationCircleOutlined } from '@ant-design/icons-vue';
+import { message, Modal } from 'ant-design-vue';
+import { useRouter, onBeforeRouteLeave } from 'vue-router'
+import { getImgSize } from 'assets/js/common.js'
 import editorElement from 'components/tools/editor.vue'
 import axios from 'axios';
 export default defineComponent({
@@ -92,15 +87,13 @@ export default defineComponent({
     editorElement
   },
   setup() {
-    const open = ref(false)
-    const confirmLoading = ref(false)
     const isChangecontent = ref(false) 
     const editorRefs = ref()
     const router = useRouter()
     const banner_id = router.currentRoute.value.params.ids
     const previewVisible = ref(false);
     const previewImage = ref('');
-    const previewImageData = ref({});
+    let previewImageData = {};
     const previewTitle = ref('');
     const fileList = ref([])
     const submitBtn = ref(null)
@@ -111,19 +104,34 @@ export default defineComponent({
     const itemsName = ref('')
     const itemsSort = ref('')
     const itemsLink = ref('')
+    let allaryHas = false
     let defaultKey = 1
-    const columns = ref([{
+    let openItemKey = null
+    const columns = ref([
+      {
       title: 'Name',
       dataIndex: 'name',
-    }, {
-      title: 'Sort',
-      dataIndex: 'sort',
-    }, {
-      title: 'Link',
-      dataIndex: 'link',
-    }])
+      },
+      {
+        title: 'Sort',
+        dataIndex: 'sort',
+      },
+      {
+        title: 'Link',
+        dataIndex: 'link',
+      }
+    ])
     const banner_data = ref([]);
     const banner_num = ref(0);
+
+    const deleteLastMessage = () => {
+      itemsName.value = ''
+      itemsSort.value = ''
+      itemsLink.value = ''
+      previewImage.value = ''
+      previewImageData = {}
+      fileList.value = []
+    }
 
     axios.post('bannerDetail',{id : banner_id}).then(res => {
         const result = res.data.data
@@ -138,7 +146,7 @@ export default defineComponent({
           for (let i = 0; i < banner_data.value.length; i++) {
             banner_data.value[i].key = i
           }
-          defaultKey = banner_data.value.length + 1
+          defaultKey = banner_data.value[banner_data.value.length - 1].key + 1
           banner_num.value = banner_data.value.length
         }
       } else {
@@ -146,29 +154,6 @@ export default defineComponent({
       }
     })
 
-    const handleOk = () => {
-        confirmLoading.value = true;
-        const upData = {
-          data: JSON.stringify(banner_data.value),
-          num: banner_num.value,
-          id: banner_id,
-          code: banner_code.value,
-          name: banner_name.value
-        }
-        axios.post('changeBanner', upData).then(res => {
-          if (res.status == 200) {
-            open.value = false;
-            confirmLoading.value = false;
-            router.push(`/banner.html`)
-          }
-        })
-    }
-
-    const cancel = () => {
-      open.value = false;
-      confirmLoading.value = false;
-      router.push(`/banner.html`)
-    }
 
     const submitSaveBanner = () => {
       if (isChangecontent.value) {
@@ -191,8 +176,13 @@ export default defineComponent({
       return {
         onclick: () => {
           const itemData = banner_data.value[index]
+          allaryHas = true
           console.log(itemData, record)
-          fileList.value = [itemData.img]
+          if (itemData.img) {
+            fileList.value = [itemData.img]
+            previewImageData = JSON.parse(JSON.stringify(itemData.img))
+          }
+          openItemKey = itemData.key
           itemsName.value = itemData.name
           itemsSort.value = itemData.sort
           itemsLink.value = itemData.link
@@ -212,7 +202,14 @@ export default defineComponent({
       state.value.loading = true;
       for (let i = 0; i < state.value.selectedRowKeys.length; i++) {
         console.log(banner_data.value)
-        banner_data.value.splice(state.value.selectedRowKeys[i], 1)
+        // banner_data.value.splice(state.value.selectedRowKeys[i], 1)
+        const key = state.value.selectedRowKeys[i]
+        for (let f = 0; f < banner_data.value.length; f++) {
+          if (key == banner_data.value[f].key) {
+            banner_data.value.splice(f, 1)
+            continue
+          }
+        }
       }
       banner_num.value = banner_data.value.length
       isChangecontent.value = true
@@ -222,39 +219,47 @@ export default defineComponent({
       },1000)
     };
     const createItems = () => {
+      deleteLastMessage()
       createBannerWrap.value.style.display = 'block'
     }
     const saveBannerItems = () => {
       const desc = editorRefs.value.valueHtml ?? ''
-      const detail = 
+      if (allaryHas) {
+        for (let i = 0; i < banner_data.value.length; i++) {
+          if (banner_data.value[i].key == openItemKey) {
+            banner_data.value[i] = {
+              key: openItemKey,
+              name: itemsName.value,
+              sort: itemsSort.value,
+              link: itemsLink.value,
+              img: previewImageData,
+              desc: desc
+            }
+          }
+        }
+      } else {
+        const detail =
         {
-          key:defaultKey,
+          key: defaultKey,
           name: itemsName.value,
           sort: itemsSort.value,
           link: itemsLink.value,
-          img: previewImageData.value,
+          img: previewImageData,
           desc: desc
+        }
+        banner_data.value.push(detail)
       }
-      banner_data.value.push(detail)
       isChangecontent.value = true
       banner_num.value = banner_data.value.length
       defaultKey++
-      itemsName.value = ''
-      itemsSort.value = ''
-      itemsLink.value = ''
-      previewImage.value = ''
-      previewImageData.value = ''
+      deleteLastMessage()
       createBannerWrap.value.style.display = 'none'
     }
     const closeWrap = () => {
-      itemsName.value = ''
-      itemsSort.value = ''
-      itemsLink.value = ''
-      previewImage.value = ''
-      previewImageData.value = ''
+      deleteLastMessage()
       editorRefs.value.changeValueHtml('')
-      fileList.value = []
       createBannerWrap.value.style.display = 'none'
+      allaryHas = false
     }
 
     const onSelectChange = selectedRowKeys => {
@@ -270,25 +275,57 @@ export default defineComponent({
         file.preview = file.response;
       }
       previewImage.value = file.url || file.preview;
-      previewImageData.value = {
-        uid: file.uid,
-        status: file.status,
-        name: file.name,
-        url: file.url || file.preview
-      }
       previewVisible.value = true;
       previewTitle.value = file.name || file.url.substring(file.url.lastIndexOf('/') + 1);
     };
+
+    onBeforeRouteLeave((to, from, next) => {
+      console.log(to, from, next)
+      if (isChangecontent.value) {
+        Modal.confirm({
+          title: '提示',
+          icon: createVNode(ExclamationCircleOutlined),
+          content: createVNode('div', {
+            style: 'color:red;',
+          }, '内容已修改，是否保存？'),
+          onOk() {
+           const upData = {
+              data: JSON.stringify(banner_data.value),
+              num: banner_num.value,
+              id: banner_id,
+              code: banner_code.value,
+              name: banner_name.value
+            }
+            axios.post('changeBanner', upData).then(res => {
+              if (res.status == 200) {
+                next(true)
+              } else {
+                next(false)
+              }
+            })
+          },
+          onCancel() {
+            next(true)
+          },
+          class: 'test',
+        });
+      } else {
+        next(true)
+      }
+    })
+
     const handleChange = async info => {
-      console.log(info)
       if (info.file.status === 'done') {
         previewImage.value = info.file.response
-        previewImageData.value = {
+        const imgMessage = await getImgSize(info.file.response)
+        previewImageData = {
           uid: info.file.uid,
           status: info.file.status,
           name: info.file.name,
-          url: info.file.response
+          url: info.file.response,
+          imgMessage: imgMessage
         }
+        console.log(previewImageData)
         message.success(`${info.file.name} file uploaded successfully`);
       } else if (info.file.status === 'error') {
         message.error(`${info.file.name} file upload failed.`);
@@ -324,10 +361,6 @@ export default defineComponent({
       banner_num,
       rowClick,
       editorRefs,
-      handleOk,
-      open,
-      confirmLoading,
-      cancel
     }
   },
 })

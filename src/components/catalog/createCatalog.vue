@@ -23,10 +23,10 @@
         <template #bodyCell="{ record,column}">
           <template v-if="column.dataIndex === 'product_img'">
             <template v-if="record.product_img">
-              <img :src="JSON.parse(record.product_img)[0]" />
+              <img :src="JSON.parse(record.product_img)[0].url"  style="width:100px"/>
             </template>
             <template v-if="!record.product_img">
-              <img src="" />
+              <img src="" style="width:100px" />
             </template>
           </template>
         </template>
@@ -127,6 +127,7 @@ export default defineComponent({
     const start = () => {
       state.value.loading = true;
       // ajax request after empty completing
+      console.log(newProductIds.value)
       axios.post('addProductOfCatalog',{id: props.catalog_id, arr: newProductIds.value}).then(res => {
         if(res.status == 200) {
           state.value.oldSelectedRowKeys = state.value.selectedRowKeys
@@ -138,6 +139,7 @@ export default defineComponent({
     };
     const onSelectChange = (selectedRowKeys) => {
       state.value.selectedRowKeys = selectedRowKeys;
+      console.log(selectedRowKeys)
       newProductIds.value = [...props.oldProductIds, ...selectedRowKeys]
     };
     
@@ -166,5 +168,9 @@ export default defineComponent({
     top: 15px;
     right: 15px;
     font-size: 28px;
+  }
+
+  .ant-table-container  td{
+    vertical-align: middle;
   }
 </style>

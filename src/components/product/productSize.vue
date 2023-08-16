@@ -231,13 +231,19 @@ export default defineComponent({
                 size_group: sizesGroup.value,
                 sizes: sizes
               }
-              sizesLen1.value = sizeDatas.value.sizes.length
-              sizesLen2.value = sizeDatas.value.sizes[0].values.length
-              sizesIds.value = sizeDatas.value.sizes[sizesLen1.value - 1].id
-              sizesLenGroup1.value = sizeDatas.value.size_group[0].size_value.length
-              sizesLenGroup2.value = sizeDatas.value.size_group[0].size_value[0].values.length
-              sizesGroupValueIds.value = sizeDatas.value.size_group[0].size_value[sizesLenGroup1.value - 1].id
-              sizesGroupIds.value = sizeDatas.value.size_group[sizeDatas.value.size_group.length - 1].size.id
+              if (sizeDatas.value.sizes.length > 0) {
+                sizesLen1.value = sizeDatas.value.sizes.length
+                sizesLen2.value = sizeDatas.value.sizes[0].values.length
+                sizesIds.value = sizeDatas.value.sizes[sizesLen1.value - 1].id
+              }
+
+              if (sizeDatas.value.size_group.length > 0) {
+                sizesLenGroup1.value = sizeDatas.value.size_group[0].size_value.length
+                sizesLenGroup2.value = sizeDatas.value.size_group[0].size_value[0].values.length
+                sizesGroupValueIds.value = sizeDatas.value.size_group[0].size_value[sizesLenGroup1.value - 1].id
+                sizesGroupIds.value = sizeDatas.value.size_group[sizeDatas.value.size_group.length - 1].size.id
+              }
+
             }else {
               sizesIds.value = props.id + '0000'
               sizesGroupValueIds.value = props.id + '00001'

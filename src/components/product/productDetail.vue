@@ -4,7 +4,7 @@
       <div class="layoutTop">
         <div class="img">
           <template v-if="product_icon">
-              <img :src="product_icon" alt="">
+              <img :src="product_icon.url" alt="">
           </template>
           <template v-if="!item.product_icon">
             <img :src="require('@/assets/images/defaultImg.gif')" alt="">
@@ -28,8 +28,7 @@
           <a-tabs v-model:activeKey="activeKey">
             <a-tab-pane key="1" tab="信息">
                <div>
-                  <upload-img ref="uploadImg" :productImgList = "productImgList"></upload-img>
-                  <button type="button" @click="saveMessage">保存</button>
+                  <upload-img ref="uploadImgRef" :id="id" :productImgList = "productImgList"></upload-img>
                </div>
             </a-tab-pane>
             <a-tab-pane key="2" tab="内容" force-render>
@@ -49,20 +48,22 @@
 import UploadImg from 'components/product/uploadImg.vue'
 import ProductSize from 'components/product/productSize.vue'
 import { defineComponent, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
 export default defineComponent({
   components: {
     UploadImg,
     ProductSize
   },
-  data() {
-    return {
-      id: '',
-      product_detail: {},
-      product_icon: '',
-      productImgList: []
-    }
-  },
   setup() {
+    const uploadImgRef = ref(null)
+    const activeKey = ref('1')
+    const router = useRouter()
+    const id = ref(router.currentRoute.value.params.ids)
+    const product_detail = ref({})
+    const product_icon = ref('')
+    const product_img = ref([])
+    const productImgList = ref([])
     const productStatus = function (value) {
       if (value == 'instock') {
           return '在库'
@@ -70,44 +71,31 @@ export default defineComponent({
         return '不在库'
       }
     }
+
+    axios.post('productDetail', { id: id.value }).then(res => {
+      if (res.status == '200') {
+        product_detail.value = res.data.data
+        console.log(product_detail.value)
+        if (product_detail.value[0].product_icon) {
+          product_icon.value = JSON.parse(product_detail.value[0].product_icon)
+        }
+        if (product_detail.value[0].product_img) {
+          productImgList.value = JSON.parse(product_detail.value[0].product_img)
+        }
+      }
+    })
+    
     return {
-      activeKey: ref('1'),
-      productStatus
+      activeKey,
+      productStatus,
+      product_detail,
+      product_icon,
+      product_img,
+      productImgList,
+      uploadImgRef,
+      id
     };
   },
-  methods: {
-    getProductDetail() {
-      this.$axios.post('productDetail', { id: this.id }).then(res => {
-        if (res.status == '200') {
-          this.product_detail = res.data.data
-          if (this.product_detail[0].product_icon) {
-            this.product_icon = JSON.parse(this.product_detail[0].product_icon)[0]
-          }
-          if (this.product_detail[0].product_img) {
-            this.productImgList = JSON.parse(this.product_detail[0].product_img)
-          }
-          }
-      })
-    },
-    saveMessage() {
-      const proxy = JSON.parse(JSON.stringify(this.$refs.uploadImg[0]))
-      const product_img = JSON.stringify(proxy.product_img)
-      this.$axios.post('productAddImg', {
-        product_id: this.id,
-        product_img: product_img,
-        product_icon: product_img
-      }).then(() => { 
-        this.$router.go(0)
-      })
-    }
-  },
-  created() {
-    this.id = this.$route.params.ids
-    this.getProductDetail()
-  },
-  onBeforeUnmount() {
-    this.productImgList = []
-  }
 })
 </script>
 

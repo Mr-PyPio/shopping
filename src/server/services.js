@@ -18,19 +18,6 @@ class TokenObj {
   }
   checkToken(token) {
     var secret = 'pypio.com' // 这是加密的key（密钥或私钥） 
-    // jwt.verify(token, secret, function (err, decode) {
-    //   if (err) { // 当token过期，或这是一个伪造的token，或这是无效的token时会触发此逻辑 
-    //     if (fn) {
-    //       fn(false);
-    //     }
-    //     return false
-    //   } else {
-    //     if (fn) {
-    //       fn(true);
-    //     }
-    //     return decode.msg;
-    //   }
-    // })
     let status = true
     try {
       jwt.verify(token, secret)
@@ -64,7 +51,7 @@ exports.login = (req, res) => {
       return res.json({ status: 400, data: result })
     } else {
       if (result[0].password == pwd) {
-        const token = myToken.createToken(username, 60 * 60)
+        const token = myToken.createToken(username, 60 * 60 * 24)
         return res.json({ status: 200, data: result, token: token })
       }
       return res.json({ status: 202, data: result })
@@ -145,11 +132,9 @@ const getArrProducts = arr => {
           for (let f = 0; f < imageArr.length; f++) {
             if (res[i].id == imageArr[f].product_id) {
               res[i].product_img = JSON.parse(imageArr[f].product_img)[0]
-            } else {
-              res[i].product_img = ''
             }
-            res[i].key = res[i].id
           }
+          res[i].key = res[i].id
         }
 
         resolve(res)
@@ -162,7 +147,7 @@ const getArrProducts = arr => {
 
 const getProductImg = () => {
   return new Promise((resolve, reject) => {
-    db.base('select * from cc_products_images', null, res => {
+    db.base('select product_id,product_img from cc_products_images', null, res => {
       if (res) {
         resolve(res)
       } else {
@@ -244,11 +229,10 @@ exports.catalogCreate = (req, res) => {
 }
 
 //勾选位获取产品部分信息
-exports.getProductsList = async (req, res) => {
+exports.getProductsList = (req, res) => {
   let page = parseInt(req.body.page)
   let pageSize = parseInt(req.body.pageSize)
   let id = req.body.id
-  let imgArr = await getProductImg()
   let arrlayProduct = []
 
   db.base('select productsList from catalog_list where id=?', id, res => {
@@ -257,24 +241,23 @@ exports.getProductsList = async (req, res) => {
     }
   })
 
-  db.base('select id, name, status from cc_products', null, (result) => {
+  db.base('select id, name, status from cc_products', null, async (result) => {
     if (result) {
+      let imgArr = await getProductImg()
       for (let i = 0; i < result.length; i++) {
         for (let f = 0; f < imgArr.length; f++) {
           if (result[i].id == imgArr[f].product_id) {
             result[i].product_img = imgArr[f].product_img
-          } else {
-            result[i].product_img = ''
           }
-          result[i].key = result[i].id
         }
+        result[i].key = result[i].id
         if (arrlayProduct.indexOf(`${result[i].id}`) >= 0) {
           result.splice(i, 1)
           i--
         }
       }
       let size = Math.round(result.length / pageSize)
-      if (page >= size) {
+      if (page >= size && size > 0) {
         page = size
       } else if (page <= 1) {
         page = 1
@@ -499,13 +482,14 @@ exports.productList = (req, res) => {
     }
   }
   let sql = 'select ' + columnsTab + ' from cc_products';
-  db.base(sql, null, (result, error) => {
+  db.base(sql, null, async (result, error) => {
     if (error) {
       return res.json({
         status: 400,
         data: error
       })
     } else {
+      result = result.reverse()
       let size = Math.round(result.length / pageSize)
       if (page >= size) {
         page = size
@@ -516,8 +500,16 @@ exports.productList = (req, res) => {
       if (endIndex > result.length - 1) {
         endIndex = result.length - 1
       }
-      result = result.reverse()
       let end = result.slice((page - 1) * pageSize, endIndex)
+      let imageArr = await getProductImg()
+      for (let i = 0; i < end.length; i++) {
+        for (let f = 0; f < imageArr.length; f++) {
+          if (end[i].id == imageArr[f].product_id) {
+            end[i].product_img = JSON.parse(imageArr[f].product_img)[0]
+          }
+        }
+        end[i].key = end[i].id
+      }
       return res.json({
         status: 200,
         data: end,
@@ -619,11 +611,11 @@ exports.productAddImg = (req, res) => {
   db.base(`select * from cc_products_images where product_id = '${product_id}'`, product_id, (result) => {
     if (!result.length) {
       sql = 'insert into cc_products_images(product_id,product_img,product_icon) values(?,?,?)';
-      parm = [product_id, product_img, product_icon,]
+      parm = [product_id, product_img, product_icon]
       axios2(sql, parm)
     } else {
       sql = `update cc_products_images set product_img = ?,product_icon = ? where product_id = ${product_id}`;
-      parm = [product_img, product_icon,]
+      parm = [product_img, product_icon]
       axios2(sql, parm)
     }
   })
@@ -720,3 +712,87 @@ exports.saleProductSizes = (req, res) => {
   }
 }
 
+//获取分类
+exports.getCategoryList = (req, res) => {
+  let sql = 'select * from cc_categories'
+  let arr = []
+  db.base(sql, null, (result, error) => {
+    if (result) {
+      let level = 0
+      for (let i = 0; i < result.length; i++) {
+        if (result[i].parent_id == level) {
+          arr.push(creatObject(result[i]))
+          result.splice(i, 1)
+          i--
+        }
+      }
+
+      level = 1
+      for (let i = 0; i < arr.length; i++) {
+        for (let k = 0; k < result.length; k++) {
+          if (result[k].parent_id == arr[i].id && result[k].nest_depth == level) {
+            arr[i].children.push(creatObject(result[k]))
+            result.splice(k, 1)
+            k--
+          }
+        }
+      }
+
+      level = 2
+      for (let f = 0; f < arr.length; f++) {
+        for (let i = 0; i < arr[f].children.length; i++) {
+          for (let k = 0; k < result.length; k++) {
+            if (result[k].parent_id == arr[f].children[i].id && result[k].nest_depth == level) {
+              arr[f].children[i].children.push(creatObject(result[k]))
+              result.splice(k, 1)
+              k--
+            }
+          }
+        }
+      }
+
+      level = 3
+      for (let f = 0; f < arr.length; f++) {
+        for (let i = 0; i < arr[f].children.length; i++) {
+          for (let o = 0; o < arr[f].children[i].children.length; o++) {
+            for (let k = 0; k < result.length; k++) {
+              if (result[k].parent_id == arr[f].children[i].children[o].id && result[k].nest_depth == level) {
+                arr[f].children[i].children[o].children.push(creatObject(result[k]))
+                result.splice(k, 1)
+                k--
+              }
+            }
+          }
+
+        }
+      }
+
+      return res.json({
+        status: 200,
+        data: {
+          arr,
+          level
+        }
+      })
+    } else {
+      return res.json({
+        status: 400,
+        data: error
+      })
+    }
+  })
+}
+
+function creatObject(arr) {
+  return {
+    id: arr.id,
+    key: arr.id,
+    is_enabled: arr.is_enabled,
+    title: arr.name,
+    name2: arr.name2,
+    slug: arr.slug,
+    page_title: arr.page_title,
+    nest_depth: arr.nest_depth,
+    children: []
+  }
+}

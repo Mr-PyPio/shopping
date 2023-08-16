@@ -45,6 +45,14 @@
                         </span>
                       </router-link>
                   </template>
+                  <template v-if="items.id == 41">
+                      <router-link to="/category.html">
+                          <span>
+                            <profile-outlined />
+                            {{ items.name }}
+                          </span>
+                        </router-link>
+                  </template>
               </a-menu-item>
             </template>
           </a-menu>
@@ -110,7 +118,12 @@ export default defineComponent({
         id: '31',
         name: '评论列表',
         children: null
-      }
+       },
+      '4': {
+        id: '41',
+        name: '分类列表',
+        children: null
+      },
     })
     return {
       selectedKeys1: ref(['2']),
