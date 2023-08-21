@@ -81,14 +81,14 @@ export default defineComponent({
   setup() {
     const topNavList = ref({
       nav1: {
-        id: '01',
+        id: '1',
         name: 'Catalog',
         link: '/home.html'
       },
       nav2: {
-        id: '02',
-        name: 'UserList',
-        link: '/UserList.html'
+        id: '2',
+        name: 'List',
+        link: '/list.html'
       },
     })
      const leftMuneList = ref({

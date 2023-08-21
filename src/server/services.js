@@ -796,3 +796,89 @@ function creatObject(arr) {
     children: []
   }
 }
+
+exports.getUserList = (req, res) => {
+  const sql = 'select * from user_list'
+  let page = req.body.page
+  const pageSize = 60
+  db.base(sql, null, async (result, error) => {
+    if (result) {
+      const length = result.length
+      let size = Math.round(length / pageSize)
+      if (length % pageSize > 0) {
+        size += 1
+      }
+      if (page >= size && size > 0) {
+        page = size
+      } else if (page <= 1) {
+        page = 1
+      }
+      let endIndex = page * pageSize
+      if (endIndex > length - 1) {
+        endIndex = length
+      }
+      let end = result.slice((page - 1) * pageSize, endIndex, size)
+      for (let i = 0; i < end.length; i++) {
+        end[i].key = end[i].id
+      }
+      return res.json({
+        status: 200,
+        data: end,
+        total: result.length,
+        pageData: {
+          page: page,
+          lastPage: size,
+          pageSize: pageSize,
+        },
+      })
+    } else {
+      return res.json({
+        status: 400,
+        data: error
+      })
+    }
+  })
+}
+
+exports.getOrderList = (req, res) => {
+  const sql = 'select * from order_list'
+  let page = req.body.page
+  const pageSize = 60
+  db.base(sql, null, (result, error) => {
+    if (result) {
+      const length = result.length
+      let size = Math.round(length / pageSize)
+      if (length % pageSize > 0) {
+        size += 1
+      }
+      if (page >= size && size > 0) {
+        page = size
+      } else if (page <= 1) {
+        page = 1
+      }
+      let endIndex = page * pageSize
+      if (endIndex > length - 1) {
+        endIndex = length
+      }
+      let end = result.slice((page - 1) * pageSize, endIndex, size)
+      for (let i = 0; i < end.length; i++) {
+        end[i].key = end[i].id
+      }
+      return res.json({
+        status: 200,
+        data: end,
+        total: length,
+        pageData: {
+          page: page,
+          lastPage: size,
+          pageSize: pageSize,
+        },
+      })
+    } else {
+      return res.json({
+        status: 400,
+        data: error
+      })
+    }
+  })
+}

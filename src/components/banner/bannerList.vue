@@ -1,9 +1,5 @@
 <template>
   <div class="bannerList">
-    <!-- <button>
-
-    </button>
-    <a-table :dataSource="dataSource" :columns="columns" /> -->
     <div style="margin-bottom: 16px">
       <a-button type="primary" :disabled="!hasSelected" :loading="loading" @click="clear">
         删除

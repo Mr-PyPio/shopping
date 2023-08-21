@@ -11,6 +11,9 @@ const Catalog = () => import('components/catalog/catalogList.vue')
 const BannerDetail = () => import('components/banner/bannerDetail.vue')
 const CatalogDetail = () => import('components/catalog/catalogDetail.vue')
 const Category = () => import('components/category/categoryList.vue')
+const List = () => import('views/list.vue')
+const UserList = () => import('components/list/user-list.vue')
+const OrderList = () => import('components/list/order-list.vue')
 
 const routes = [
   {
@@ -57,7 +60,24 @@ const routes = [
     ]
   },
   {
-    name: 'Login',
+    name: 'List',
+    path: '/list.html',
+    component: List,
+    children: [
+      {
+        name: 'user',
+        path: '/user-list.html',
+        component: UserList
+      },
+      {
+        name: 'order',
+        path: '/order-list.html',
+        component: OrderList
+      }
+    ]
+  },
+  {
+    name: 'Loging',
     path: '/login.html',
     component: Login
   }

@@ -50,5 +50,9 @@ router.post('/api/addProductOfCatalog', services.addProductOfCatalog)
 router.post('/api/delateCatalogList', services.delateCatalogList)
 //获取分类列表
 router.post('/api/getCategoryList', services.getCategoryList)
+//获取用户列表
+router.post('/api/getUserList', services.getUserList)
+//获取订单列表
+router.post('/api/getOrderList', services.getOrderList)
 
 module.exports = router
